@@ -26,7 +26,7 @@
 ## 项目结构
 
 ```
-fastapi-starter-kit/
+fastapi-vue3-starter-kit/
 ├── backend/          # FastAPI 后端
 ├── frontend/         # Vue 3 前端
 ├── nginx/            # Nginx 配置
@@ -47,7 +47,7 @@ fastapi-starter-kit/
 1. **克隆项目**
 ```bash
 git clone <repository-url>
-cd fastapi-starter-kit
+cd fastapi-vue3-starter-kit
 ```
 
 2. **配置环境变量**

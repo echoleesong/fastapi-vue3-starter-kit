@@ -1,0 +1,92 @@
+services:
+  # ==================== 后端服务 ====================
+  backend:
+    build:
+      context: ./backend
+    container_name: fastapi-backend-dev
+    command: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+    volumes:
+      - ./backend:/app # 挂载代码，实现热重载
+      - backend-logs:/app/logs
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=json
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ==================== 前端服务 ====================
+  frontend:
+    build:
+      context: ./frontend
+      target: build-stage # 只构建到 Node 环境
+    container_name: vue3-frontend-dev
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # 避免本地 node_modules 覆盖
+    ports:
+      - "5173:5173" # Vite 默认端口
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ==================== PostgreSQL 数据库 ====================
+  db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # ==================== Redis 缓存 ====================
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  backend-logs:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
